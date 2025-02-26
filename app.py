@@ -1,48 +1,33 @@
 import streamlit as st
-from transformers import AutoModelForTokenClassification, AutoTokenizer, pipeline
+from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
+import torch
 
-# Load the trained model and tokenizer
-MODEL_NAME = "dmis-lab/biobert-base-cased-v1.1"  # Update with your model path if different
-model = AutoModelForTokenClassification.from_pretrained(MODEL_NAME)
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+# Load model and tokenizer
+MODEL_PATH = "model"  # Path to the model folder
+tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
+model = AutoModelForTokenClassification.from_pretrained(MODEL_PATH)
 
-# Define label mapping
-label_mapping = {
-    "LABEL_0": "Non-medical",
-    "LABEL_1": "Condition",
-    "LABEL_2": "Disease"
-}
-
-# Initialize pipeline
+# Create NER pipeline
 nlp_pipeline = pipeline("ner", model=model, tokenizer=tokenizer, aggregation_strategy="simple")
 
-def predict_entities(text):
-    predictions = nlp_pipeline(text)
-    formatted_predictions = [
-        {
-            "Word": ent["word"],
-            "Label": label_mapping.get(ent["entity_group"], ent["entity_group"]),
-            "Confidence": f"{ent['score'] * 100:.2f}%"
-        }
-        for ent in predictions
-    ]
-    return formatted_predictions
-
 # Streamlit UI
-st.title("Medical NER using BioBERT")
-st.write("Enter a medical text to extract conditions and diseases.")
+st.title("🩺 Medical Named Entity Recognition (NER)")
+st.write("This model identifies medical conditions and diseases in text.")
 
 # User Input
-text_input = st.text_area("Enter text here:", "The patient was diagnosed with glioblastoma and prescribed temozolomide.")
+user_input = st.text_area("Enter medical text here:", "")
 
 if st.button("Analyze"):
-    if text_input:
-        results = predict_entities(text_input)
-        st.write("### Predictions:")
-        for result in results:
-            st.write(f"**{result['Word']}** → {result['Label']} ({result['Confidence']})")
+    if user_input:
+        results = nlp_pipeline(user_input)
+        
+        # Display results
+        st.subheader("Predicted Entities:")
+        for entity in results:
+            st.write(f"**{entity['word']}** → `{entity['entity_group']}` ({entity['score']:.2%})")
     else:
-        st.warning("Please enter some text!")
+        st.warning("Please enter some text.")
 
-st.sidebar.write("Model: BioBERT")
-st.sidebar.write("Developed for Medical NER")
+# Footer
+st.markdown("---")
+st.markdown("Built with [Streamlit](https://streamlit.io/) & [Hugging Face Transformers](https://huggingface.co/).")
